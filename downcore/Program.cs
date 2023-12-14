@@ -2,14 +2,16 @@
 using System.Text.RegularExpressions;
 
 var regexStr = new Regex(@"^\d+$");
+var speedStr = new Regex(@"^\d+[km]b/s$");
 var currentDirectory = AppDomain.CurrentDomain.BaseDirectory;
 
 int fragmentLength = 4;
 string outputDir = currentDirectory;
 bool withPopupWindow = false;
 bool quietMode = false;
-string linkUrl = "";
+List<DownTarget> linkTargtes = new List<DownTarget>();
 bool openWhenFinish = false;
+int speed = int.MaxValue;
 
 bool v = args.Any(s => s == "-v");
 bool n = args.Any(s => s == "-n");
@@ -19,6 +21,7 @@ bool s = args.Any(s => s == "-s");
 bool l = args.Any(s => s == "-l");
 bool c = args.Any(s => s == "-c");
 bool h = args.Any(s => s == "-h");
+bool m = args.Any(s => s == "-m");
 
 if (v)
 {
@@ -73,7 +76,16 @@ if (l)
     var lh = Statics.FindNextString(args, "-l");
     if (lh != null)
     {
-        linkUrl = lh;
+        var x = Array.IndexOf(args, "-l");
+        for (int i = x; i < args.Length; i++)
+        {
+            if (args[i].StartsWith("http"))
+            {
+                var d = new DownTarget();
+                d.url = args[i];
+                linkTargtes.Add(d);
+            }
+        }
     }
     else
     {
@@ -86,3 +98,34 @@ if (c)
 {
     openWhenFinish = true;
 }
+
+if (m)
+{
+    var mp = Statics.FindNextString(args, "-l");
+    if (mp != null)
+    {
+        var im = speedStr.IsMatch(mp);
+        if (im)
+        {
+            speed = Statics.ParseDataRate(mp);
+        }
+        else
+        {
+            Statics.Log($"Invalid speed param: {mp}.", ConsoleColor.Red);
+        }
+        Statics.Log($"Speed limit: {speed}kb/s.", ConsoleColor.Red);
+    }
+    else
+    {
+        Statics.Log(@"You have entered the parameter ""-m"" but did not specify a speed.", ConsoleColor.Red);
+    }
+}
+
+foreach (var d in linkTargtes)
+{
+    var f = Httpk.getSize(d.url);
+    f.Wait();
+    d.size = f.Result.size;
+    d.fileName = f.Result.filename;
+}
+

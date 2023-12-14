@@ -2,7 +2,7 @@
   "profiles": {
     "downcore": {
       "commandName": "Project",
-      "commandLineArgs": "-v -o ./down"
+      "commandLineArgs": "-l http://51speedtop02.yzhy17.cn/2023/12/12/Jianying.exe?timestamp=657abb5c&auth_key=b148cd6ae7e16064c53a73eac503ff14&sign=d8c95b6f50754f085d790af7fbe7b5d4&t=657ac96c -o ./down"
     }
   }
 }

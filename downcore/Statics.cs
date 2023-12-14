@@ -53,5 +53,26 @@ namespace downcore
             }
             return null;
         }
+        public static int ParseDataRate(string dataRate)
+        {
+            int rate = 0;
+            int multiplier = 1;
+
+            if (dataRate.EndsWith("kb/s"))
+            {
+                multiplier = 1;
+            }
+            else if (dataRate.EndsWith("mb/s"))
+            {
+                multiplier = 1024;
+            }
+
+            string numericPart = new string(dataRate.Where(char.IsDigit).ToArray());
+
+            int.TryParse(numericPart, out rate);
+            rate *= multiplier;
+
+            return rate;
+        }
     }
 }
