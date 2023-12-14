@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "downcore": {
+      "commandName": "Project",
+      "commandLineArgs": "-v -o ./down"
+    }
+  }
+}
