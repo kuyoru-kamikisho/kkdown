@@ -1,4 +1,6 @@
 ﻿using downcore;
+using System.Timers;
+using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 
 var regexStr = new Regex(@"^\d+$");
@@ -58,7 +60,7 @@ if (o)
         var o2 = Directory.Exists(outputDir);
         if (o2)
         {
-            Statics.Log($"The file will be output to: {outputDir}", ConsoleColor.Gray);
+            Statics.Log($"The file will be output to: {outputDir}", ConsoleColor.DarkYellow);
         }
         else
         {
@@ -123,9 +125,86 @@ if (m)
 
 foreach (var d in linkTargtes)
 {
-    var f = Httpk.getSize(d.url);
-    f.Wait();
-    d.size = f.Result.size;
-    d.fileName = f.Result.filename;
+    try
+    {
+        var f = Httpk.getSize(d.url);
+        f.Wait();
+        d.size = f.Result.size;
+        d.fileName = f.Result.filename;
+
+        long remain = d.size;
+        long dpsize = d.size / fragmentLength;
+        d.pieceGetedSize = new long[fragmentLength];
+        d.starts = new long[fragmentLength];
+        d.ends = new long[fragmentLength];
+
+        for (int i = 0; i < fragmentLength; i++)
+        {
+            remain -= dpsize;
+            d.starts[i] = dpsize * i + 1;
+            if (dpsize <= remain)
+            {
+                d.ends[i] = dpsize * (i + 1);
+            }
+            else
+            {
+                d.ends[i] = d.size;
+            }
+        }
+    }
+    catch (AggregateException error)
+    {
+        d.errorInfo = error.Message;
+    }
 }
 
+Statics.Log("Get resource info success.", ConsoleColor.Cyan);
+Statics.Log("Your download has been started, please wait a moment.", ConsoleColor.Cyan);
+
+List<Task> downloadTasks = new List<Task>();
+
+foreach (var d in linkTargtes)
+{
+    if (d.fileName != null)
+    {
+        for (int i = 0; i < fragmentLength; i++)
+        {
+            int ci = i;
+            var r1 = d.starts[ci];
+            var r2 = d.ends[ci];
+
+            Task task = Task.Run(async () =>
+            {
+                var outPiece = Path.Combine(outputDir, $"./{d.fileName}_{ci}");
+                HttpClient client = new HttpClient();
+                HttpResponseMessage response = await client.GetAsync(d.url, HttpCompletionOption.ResponseHeadersRead);
+
+                response.EnsureSuccessStatusCode();
+                client.DefaultRequestHeaders.Range = new RangeHeaderValue(r1, r2);
+
+                var stream = await client.GetStreamAsync(d.url);
+                var outputFile = new FileStream(outPiece, FileMode.Create, FileAccess.Write);
+
+                byte[] buffer = new byte[8192];
+                long downloadedSize = 0;
+                int bytesRead;
+
+                while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                {
+                    await outputFile.WriteAsync(buffer, 0, bytesRead);
+                    downloadedSize += bytesRead;
+                    d.pieceGetedSize[ci] = downloadedSize;
+                }
+            });
+            downloadTasks.Add(task);
+        }
+    }
+    else
+    {
+        Statics.Log($"[{d.fileName}...]\t{d.errorInfo}", ConsoleColor.DarkRed);
+    }
+}
+
+await Task.WhenAll(downloadTasks);
+
+Statics.Log("All tasks have been finished.", ConsoleColor.Green);

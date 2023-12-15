@@ -1,4 +1,20 @@
-﻿### Description
+﻿### Style define
+
+```csharp
+// file     filename.mp4        60.4 m/s
+// total    [■■■■■■■■■■■■■■■■■■  ] 91%
+// p1       [■■■■■■■■■■■■■■■■■■■■] 100% 
+// p2       [■■■■■■■■■■■■■■■■■■■■] 100% 
+// p3       [■■■■■               ] 25% 
+
+// file     filename2.mp4		60.4 m/s
+// total    [■■■■■■■■■■■■■■■■■■  ] 91%
+// p1       [■■■■■■■■■■■■■■■■■■■■] 100% 
+// p2       [■■■■■■■■■■■■■■■■■■■■] 100% 
+// p3       [■■■■■               ] 25% 
+```
+
+### Description
 
 A console program that can be downloaded through segmentation technology to maximize the utilization of your network bandwidth.
 

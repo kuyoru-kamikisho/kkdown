@@ -24,7 +24,10 @@ namespace downcore
             response.EnsureSuccessStatusCode();
 
             long size = response.Content.Headers.ContentLength ?? -1;
-            string fileName = response.Content.Headers.ContentDisposition?.FileName ?? "unknown";
+            string[] segs = response.RequestMessage.RequestUri.Segments;
+            string fileName = response.Content.Headers.ContentDisposition?.FileName
+                ?? segs[segs.Length - 1]
+                ?? "resource" + new Random().Next();
 
             return new LinkFileInfo
             {
