@@ -31,9 +31,20 @@ namespace downcore
 
             return new LinkFileInfo
             {
-                filename = fileName,
+                filename = RemoveSpecialCharacters(fileName),
                 size = size,
             };
+        }
+        public static string RemoveSpecialCharacters(string input)
+        {
+            string[] charactersToRemove = { "\"", "@", "#", "^", "!", "/", "*", "`" };
+
+            foreach (string character in charactersToRemove)
+            {
+                input = input.Replace(character, string.Empty);
+            }
+
+            return input;
         }
     }
 }

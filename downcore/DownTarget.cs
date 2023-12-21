@@ -16,25 +16,26 @@ namespace downcore
         public long[]? starts;
         public long[]? ends;
 
-        public double totalProgress
+        public double getTotalProgress()
         {
-            get
+            double sum = 0;
+            if (pieceGetedSize != null)
             {
-                double sum = 0;
-                if (pieceGetedSize != null)
+                foreach (long progress in pieceGetedSize)
                 {
-                    foreach (long progress in pieceGetedSize)
-                    {
-                        sum += progress / size;
-                    }
+                    sum += progress / (double)size;
                 }
-                return sum;
             }
+            return sum;
         }
 
         public double getPieceProgress(int index)
         {
-            return pieceGetedSize[index] / (ends[index] - starts[index] + 1);
+            if (fileName != null)
+            {
+                return pieceGetedSize[index] / (ends[index] - starts[index] + 1.00);
+            }
+            return 0;
         }
     }
 }

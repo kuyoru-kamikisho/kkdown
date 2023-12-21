@@ -4,26 +4,17 @@ using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 
 var regexStr = new Regex(@"^\d+$");
-var speedStr = new Regex(@"^\d+[km]b/s$");
 var currentDirectory = AppDomain.CurrentDomain.BaseDirectory;
 
 int fragmentLength = 4;
 string outputDir = currentDirectory;
-bool withPopupWindow = false;
-bool quietMode = false;
 List<DownTarget> linkTargtes = new List<DownTarget>();
-bool openWhenFinish = false;
-int speed = int.MaxValue;
 
 bool v = args.Any(s => s == "-v");
 bool n = args.Any(s => s == "-n");
 bool o = args.Any(s => s == "-o");
-bool a = args.Any(s => s == "-a");
-bool s = args.Any(s => s == "-s");
 bool l = args.Any(s => s == "-l");
-bool c = args.Any(s => s == "-c");
 bool h = args.Any(s => s == "-h");
-bool m = args.Any(s => s == "-m");
 
 if (v)
 {
@@ -96,33 +87,6 @@ if (l)
     }
 }
 
-if (c)
-{
-    openWhenFinish = true;
-}
-
-if (m)
-{
-    var mp = Statics.FindNextString(args, "-l");
-    if (mp != null)
-    {
-        var im = speedStr.IsMatch(mp);
-        if (im)
-        {
-            speed = Statics.ParseDataRate(mp);
-        }
-        else
-        {
-            Statics.Log($"Invalid speed param: {mp}.", ConsoleColor.Red);
-        }
-        Statics.Log($"Speed limit: {speed}kb/s.", ConsoleColor.Red);
-    }
-    else
-    {
-        Statics.Log(@"You have entered the parameter ""-m"" but did not specify a speed.", ConsoleColor.Red);
-    }
-}
-
 foreach (var d in linkTargtes)
 {
     try
@@ -141,10 +105,10 @@ foreach (var d in linkTargtes)
         for (int i = 0; i < fragmentLength; i++)
         {
             remain -= dpsize;
-            d.starts[i] = dpsize * i + 1;
+            d.starts[i] = dpsize * i;
             if (dpsize <= remain)
             {
-                d.ends[i] = dpsize * (i + 1);
+                d.ends[i] = dpsize * (i + 1) - 1;
             }
             else
             {
@@ -163,15 +127,43 @@ Statics.Log("Your download has been started, please wait a moment.", ConsoleColo
 
 List<Task> downloadTasks = new List<Task>();
 
-foreach (var d in linkTargtes)
+int ctop = Console.CursorTop;
+int cleft = Console.CursorLeft;
+bool iswriting = false;
+
+Console.Clear();
+Console.ForegroundColor = ConsoleColor.DarkCyan;
+Console.WriteLine();
+Console.WriteLine("  ┌─────────────────┐");
+Console.WriteLine("  │  kkdown v0.0.1  │");
+
+for (int j = 0; j < linkTargtes.Count; j++)
 {
+    int cj = j;
+    var d = linkTargtes[j];
+
     if (d.fileName != null)
     {
+        if (j == 0)
+        {
+            Console.WriteLine("  ├─────────────────┴──────────────────────────────────────────────┐");
+        }
+        else
+        {
+            Console.WriteLine("  ├────────────────────────────────────────────────────────────────┤");
+        }
+        Console.WriteLine("  │                                                                │");
+
+        Console.WriteLine($"  │  file     {d.fileName}");
+        Console.WriteLine("  │  total    [                    ] 0% ");
+
         for (int i = 0; i < fragmentLength; i++)
         {
             int ci = i;
             var r1 = d.starts[ci];
             var r2 = d.ends[ci];
+
+            Console.WriteLine($"  │  p{i + 1}       [                    ] 0% ");
 
             Task task = Task.Run(async () =>
             {
@@ -194,17 +186,71 @@ foreach (var d in linkTargtes)
                     await outputFile.WriteAsync(buffer, 0, bytesRead);
                     downloadedSize += bytesRead;
                     d.pieceGetedSize[ci] = downloadedSize;
+
+                    if (!iswriting)
+                    {
+                        iswriting = true;
+
+                        double tp = Math.Floor(d.getTotalProgress() * 10000) / 100;
+                        double pp = Math.Floor(d.getPieceProgress(ci) * 10000) / 100;
+                        int tn = (int)Math.Floor(tp / 5);
+                        int pn = (int)Math.Floor(pp / 5);
+
+                        Console.SetCursorPosition(0, 5 + cj * 8);
+                        Console.WriteLine($"  │  file     {d.fileName}");
+                        Console.SetCursorPosition(0, 6 + cj * 8);
+                        Console.WriteLine($"  │  total    [{new string('■', tn)}{new string(' ', 20 - tn)}] {tp}%");
+                        Console.SetCursorPosition(0, 7 + ci + cj * 8);
+                        Console.WriteLine($"  │  p{ci + 1}       [{new string('■', pn)}{new string(' ', 20 - pn)}] {pp}%");
+                        iswriting = false;
+                    }
                 }
+                outputFile.Close();
             });
             downloadTasks.Add(task);
         }
-    }
-    else
-    {
-        Statics.Log($"[{d.fileName}...]\t{d.errorInfo}", ConsoleColor.DarkRed);
+
+        Console.WriteLine("  │                                               ");
+
+        if (j == linkTargtes.Count - 1)
+        {
+            Console.WriteLine("  └────────────────────────────────────────────────────────────────┘");
+        }
     }
 }
 
+ctop = Console.CursorTop;
+cleft = Console.CursorLeft;
+
 await Task.WhenAll(downloadTasks);
 
-Statics.Log("All tasks have been finished.", ConsoleColor.Green);
+Console.ResetColor();
+Console.SetCursorPosition(cleft, ctop);
+
+Statics.Log("\n  All download tasks have been finished, start merge...", ConsoleColor.Green);
+
+for (int i = 0; i < linkTargtes.Count; i++)
+{
+    var dti = linkTargtes[i];
+
+    if (dti.fileName != null)
+    {
+        var fpath = Path.Combine(outputDir + "/", dti.fileName);
+        var writer = new FileStream(fpath, FileMode.Create, FileAccess.Write);
+        for (int j = 0; j < fragmentLength; j++)
+        {
+            var outPiece = Path.Combine(outputDir, $"./{dti.fileName}_{j}");
+            FileStream segmentStream = File.OpenRead(outPiece);
+            await segmentStream.CopyToAsync(writer);
+            segmentStream.Close();
+            File.Delete(outPiece);
+        }
+        writer.Close();
+        Statics.Log("  output to:  \n    " + fpath, ConsoleColor.Green);
+    }
+    else
+    {
+        Statics.Log($"  download link error in {i}: {dti.errorInfo}\n  link: {dti.url}\n\n", ConsoleColor.DarkRed);
+    }
+}
+
