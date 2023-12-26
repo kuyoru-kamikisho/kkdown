@@ -45,19 +45,35 @@ while ((line = reader.ReadLine()) != null)
             fileRef!.filename = name;
             fileRef!.outPath = $"{outpath}{name}";
 
-            Console.WriteLine($"Create task: {name}");
-
             var targetClone = fileRef!.Clone();
-            var task = Task.Run(() =>
+            var task = Task.Run(async () =>
             {
-                var client = new WebClient();
-                var fileStream = new FileStream(
-                    targetClone!.outPath,
-                    FileMode.Create,
-                    FileAccess.Write
-                    );
-                using Stream downloadStream = client.OpenRead(targetClone!.url);
-                downloadStream.CopyTo(fileStream);
+                var httpClient = new HttpClient();
+                var response1 = await httpClient.GetAsync(targetClone.url);
+                try
+                {
+                    response1.EnsureSuccessStatusCode();
+                    targetClone.size = response1.Content.Headers.ContentLength;
+                    Console.WriteLine($"\n{targetClone.name} {targetClone.size} bytes, downloading...");
+                    var fileStream = new FileStream(
+                        targetClone!.outPath,
+                        FileMode.Create,
+                        FileAccess.Write
+                        );
+                    using (Stream responseStream = await response1.Content.ReadAsStreamAsync())
+                    {
+                        Console.WriteLine($"{targetClone.name} received data...");
+                        await responseStream.CopyToAsync(fileStream);
+                    }
+                    Console.WriteLine($"{targetClone.name} downloaded.");
+                    fileStream.Close();
+                }
+                catch (HttpRequestException error)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"\nCannot download {targetClone.name}:\n    {error.Message}");
+                    Console.ResetColor();
+                }
             });
             tasks.Add(task);
         }
@@ -70,4 +86,4 @@ while ((line = reader.ReadLine()) != null)
 }
 
 await Task.WhenAll(tasks);
-Console.WriteLine("All tasks have been finished.");
+Console.WriteLine("\nAll tasks have been finished.");

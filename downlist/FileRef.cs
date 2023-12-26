@@ -12,6 +12,7 @@ namespace downlist
         public string filename;
         public string url;
         public string outPath;
+        public long? size;
 
         public FileRef Clone()
         {
@@ -21,7 +22,8 @@ namespace downlist
                 name = name,
                 filename = filename,
                 url = url,
-                outPath = outPath
+                outPath = outPath,
+                size = size
             };
         }
     }
