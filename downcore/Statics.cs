@@ -19,7 +19,7 @@ namespace downcore
  /_/\_\/_/\_\\_,_/\___/__,__/_//_/                                 
  ";
 
-        public static string version = "version: 0.0.1";
+        public static string version = "version: 0.0.2";
         public static string repositry = "https://github.com/kuyoru-kamikisho/kkdown";
 
         /// <summary>

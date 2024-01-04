@@ -1,5 +1,4 @@
 ﻿using downcore;
-using System.Timers;
 using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 
@@ -130,6 +129,7 @@ List<Task> downloadTasks = new List<Task>();
 int ctop = Console.CursorTop;
 int cleft = Console.CursorLeft;
 bool iswriting = false;
+object locko = new object();
 
 Console.Clear();
 Console.ForegroundColor = ConsoleColor.DarkCyan;
@@ -189,20 +189,22 @@ for (int j = 0; j < linkTargtes.Count; j++)
 
                     if (!iswriting)
                     {
-                        iswriting = true;
+                        lock (locko)
+                        {
+                            iswriting = true;
+                            double tp = Math.Floor(d.getTotalProgress() * 10000) / 100;
+                            double pp = Math.Floor(d.getPieceProgress(ci) * 10000) / 100;
+                            int tn = (int)Math.Floor(tp / 5);
+                            int pn = (int)Math.Floor(pp / 5);
 
-                        double tp = Math.Floor(d.getTotalProgress() * 10000) / 100;
-                        double pp = Math.Floor(d.getPieceProgress(ci) * 10000) / 100;
-                        int tn = (int)Math.Floor(tp / 5);
-                        int pn = (int)Math.Floor(pp / 5);
-
-                        Console.SetCursorPosition(0, 5 + cj * 8);
-                        Console.WriteLine($"  │  file     {d.fileName}");
-                        Console.SetCursorPosition(0, 6 + cj * 8);
-                        Console.WriteLine($"  │  total    [{new string('■', tn)}{new string(' ', 20 - tn)}] {tp}%");
-                        Console.SetCursorPosition(0, 7 + ci + cj * 8);
-                        Console.WriteLine($"  │  p{ci + 1}       [{new string('■', pn)}{new string(' ', 20 - pn)}] {pp}%");
-                        iswriting = false;
+                            Console.SetCursorPosition(0, 5 + cj * 8);
+                            Console.WriteLine($"  │  file     {d.fileName}");
+                            Console.SetCursorPosition(0, 6 + cj * 8);
+                            Console.WriteLine($"  │  total    [{new string('■', tn)}{new string(' ', 20 - tn)}] {tp}%");
+                            Console.SetCursorPosition(0, 7 + ci + cj * 8);
+                            Console.WriteLine($"  │  p{ci + 1}       [{new string('■', pn)}{new string(' ', 20 - pn)}] {pp}%");
+                            iswriting = false;
+                        }
                     }
                 }
                 outputFile.Close();
